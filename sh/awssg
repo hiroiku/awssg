@@ -1,0 +1,85 @@
+#!/bin/sh
+
+cd `dirname $0`
+
+usage() {
+  cat << EOL
+Usage: <cloudfront|cloudflare> [--quiet] [--from <from>] --group-id <group-id> --protocol <tcp|udp> --port <port>
+EOL
+}
+
+CDN=$1
+
+while (( $# > 0 )); do
+  case "$1" in
+    -*)
+      if [[ "$1" =~ 'help' ]]; then
+          usage
+          exit 0;
+      fi
+
+      if [[ "$1" =~ 'quiet' ]]; then
+          IS_QUIET=true
+      fi
+
+      if [[ "$1" =~ 'from' ]]; then
+          FROM=$2
+      fi
+
+      if [[ "$1" =~ 'group-id' ]]; then
+          GROUP_ID=$2
+      fi
+
+      if [[ "$1" =~ 'protocol' ]]; then
+          PROTOCOL=$2
+      fi
+
+      if [[ "$1" =~ 'port' ]]; then
+          PORT=$2
+      fi
+
+      shift;;
+    *) ((++argc)); argv=("${argv[@]}" "$1"); shift;;
+  esac
+done
+
+if [ -z "$CDN" ]; then
+  echo "Please input CDN arguments."
+  $0 --help
+  exit 1;
+fi
+
+if [ -z "$GROUP_ID" ]; then
+  echo "Please input --group-id option."
+  exit 1;
+fi
+
+if [ -z "$PROTOCOL" ]; then
+  echo "Please input --protocol option."
+  exit 1;
+fi
+
+if [ -z "$PORT" ]; then
+  echo "Please input --port option."
+  exit 1;
+fi
+
+ESCAPED_CDN=`echo $CDN | sed "s/\//\\\\\\\\\//g"`
+INVOKE_CIDRS=`./cdn/$CDN $FROM`
+REVOKE_CIDRS=`aws ec2 describe-security-groups --group-ids $GROUP_ID | jq -r .SecurityGroups[].IpPermissions[].IpRanges[].CidrIp`
+
+IFS=$'\n'
+
+DUPLICATE_CIDRS=(`{ echo "${INVOKE_CIDRS[*]}"; echo "${REVOKE_CIDRS[*]}"; } | sort | uniq -d`)
+REMOVE_CIDRS=(`{ echo "${REVOKE_CIDRS[*]}"; echo "${DUPLICATE_CIDRS[*]}"; } | sort | uniq -u`)
+ADD_CIDRS=(`{ echo "${INVOKE_CIDRS[*]}"; echo "${DUPLICATE_CIDRS[*]}"; } | sort | uniq -u`)
+
+for CIDR in ${REMOVE_CIDRS[@]}; do
+  aws ec2 revoke-security-group-ingress --group-id $GROUP_ID --protocol $PROTOCOL --port $PORT --cidr $CIDR
+  echo "Deleted $CIDR"
+done
+
+for CIDR in ${ADD_CIDRS[@]}; do
+  aws ec2 authorize-security-group-ingress --group-id $GROUP_ID --protocol $PROTOCOL --port $PORT --cidr $CIDR;
+  echo "Added $CIDR"
+done

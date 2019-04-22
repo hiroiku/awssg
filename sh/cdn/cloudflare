@@ -1,0 +1,11 @@
+#!/bin/sh
+
+cd `dirname $0`
+
+FROM=https://www.cloudflare.com/ips-v4
+
+if [ -n "$1" ]; then
+  FROM=$1
+fi
+
+curl -sS $FROM

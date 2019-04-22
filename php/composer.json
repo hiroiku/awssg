@@ -1,0 +1,15 @@
+{
+  "name": "hiroiku/wpserver",
+  "description": "WordPress built in server",
+  "version": "1.0.2",
+  "type": "project",
+  "license": "ISC",
+  "authors": [{
+    "name": "Hiroiku Inoue"
+  }],
+  "scripts": {
+    "build": [
+      "./box build -c box.json"
+    ]
+  }
+}

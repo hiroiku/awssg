@@ -1,0 +1,11 @@
+#!/bin/sh
+
+cd `dirname $0`
+
+FROM=http://d7uri8nf7uskq.cloudfront.net/tools/list-cloudfront-ips
+
+if [ -n "$1" ]; then
+  FROM=$1
+fi
+
+curl -sS $FROM | jq -r .CLOUDFRONT_REGIONAL_EDGE_IP_LIST[]

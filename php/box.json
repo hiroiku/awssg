@@ -1,0 +1,10 @@
+{
+    "chmod": "0755",
+    "files": [],
+    "directories": [
+        "./src"
+    ],
+    "main": "./src/main.php",
+    "output": "./dist/aws-sg-cloudflare",
+    "stub": true
+}
